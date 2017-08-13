@@ -57,7 +57,7 @@ E.g. 1800 MBytes / second round-trip on 4.5G i4930 (with large array), 10 us rou
 No check for valid types
 
 ## Getting started ##
-* Make ```julia Pkg.test("octsock5") ```work
+* Make ```Pkg.test("octsock5") ```work
 * Run "julia test/main.jl client server" (that is, give both "client" and "server" as command line arguments).
 
 When doing so, the below lines in test/main.jl demonstrate transmission of a single string:
