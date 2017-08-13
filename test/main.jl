@@ -1,5 +1,7 @@
-#!/usr/bin/env julia
-#include("octsock5.jl");
+# Purpose of this file: 
+# Command-line driven test case for octsock5 high-speed data interface
+# Usually, this will be run as two independent processes for server / client 
+
 using octsock5;
 
 function measureRoundtripTime(iOsSrv, iOsClt)
@@ -146,11 +148,11 @@ function main()
     args::Dict{String, Bool} = Dict(
         "server" => false, 
         "client" => false, 
-        "loopback" => false, 
         "roundtrip" => false, 
         "throughput" => false,
         "profiling" => false, 
-        "alltypes" => false);
+        "alltypes" => false, 
+        "tcpip" => false);
     
     for arg::String in ARGS
         if haskey(args, arg)
@@ -159,32 +161,24 @@ function main()
             error("invalid command line argument '" * arg * "'");
         end
     end
-    
+
+    # negative port number: Use Windows named pipes 
+    portNum::Int64 = args["tcpip"] ? 2000 : -12345
+
     # === start link ===
     begin
         if (args["server"])
-            iOsSrv = octsock5_new(isServer=true, portNum=-12345);
+            iOsSrv = octsock5_new(isServer=true, portNum=portNum);
             print("SERVER_READY\n");
         end
         if (args["client"])
-            iOsClt = octsock5_new(isServer=false, portNum=-12345);
+            iOsClt = octsock5_new(isServer=false, portNum=portNum);
         end
         if (args["server"])
             octsock5_accept(iOsSrv);
         end
     end
     
-    # optionally:
-    # set direct membuf IO instead of going through Windows named pipes
-    if (args["loopback"])
-        assert(iOsSrv != Void);
-        assert(iOsClt != Void);
-        iOsSrv.ioIn = IOBuffer(Array{UInt8, 1}(0), true, true, true, true, typemax(Int)); 
-        iOsSrv.ioOut = IOBuffer(Array{UInt8, 1}(0), true, true, true, true, typemax(Int)); 
-        iOsClt.ioIn = iOsSrv.ioOut;
-        iOsClt.ioOut = iOsSrv.ioIn;
-    end
-
     # === run code once to remove startup time from benchmarks ===
     if (iOsSrv != Void) octsock5_write(iOsSrv, "Hello World", true); end
     if (iOsClt != Void) octsock5_read(iOsClt); end

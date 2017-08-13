@@ -1,9 +1,9 @@
-# Note: Expects julia.exe in path (e.g. use mingw with export PATH="$PATH:/c/julia/bin"
-
+# [note1]: Expects julia.exe in path (e.g. use mingw with export PATH="$PATH:/c/julia/bin"
+# [note2]: https://discourse.julialang.org/t/interpolating-an-empty-string-inside-backticks/2428/3
 using octsock5
 using Base.Test
-function runTwoProcess(args::String)
-    # start server process
+function runTwoProcess(args::Cmd) # [note2]
+    # start server process [note1]
     a1::Tuple = open(`julia.exe main.jl server $args`);
 
     # wait until server has bound the port
@@ -24,24 +24,36 @@ function runTwoProcess(args::String)
 end
 
 function runLatency()
-    info("running latency test");
-    (a,b) = runTwoProcess("roundtrip");
+    info("running latency test (windows named pipes)");
+    (a,b) = runTwoProcess(`roundtrip`);
     info("Server reports: " * a)
     info("Client reports: " * b);
+    
+    info("running latency test (TCP/IP on localhost)");
+    (a,b) = runTwoProcess(`roundtrip tcpip`);
+    info("Server reports: " * a)
+    info("Client reports: " * b);
+
     return true
 end
 
 function runThroughput()
-    info("running throughput test");
-    (a, b) = runTwoProcess("throughput")
+    info("running throughput test (windows named pipes)");
+    (a, b) = runTwoProcess(`throughput`)
     info("Server reports: " * a)
     info("Client reports: " * b);
+    
+    info("running throughput test (tcpip on localhost)");
+    (a, b) = runTwoProcess(`throughput tcpip`)
+    info("Server reports: " * a)
+    info("Client reports: " * b);
+
     return true
 end
 
 function runAllTypes()
     info("running all types test");
-    (a, b) = runTwoProcess("alltypes")
+    (a, b) = runTwoProcess(`alltypes`)
     info("Server reports: " * a)
     info("Client reports: " * b);
     return true

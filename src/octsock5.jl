@@ -33,8 +33,7 @@ type octsock5_cl
     stringMemSize::UInt64;    
     stringMemPtr::Ptr{UInt8};
     server::Any;
-    ioIn::IO;
-    ioOut::IO;
+    io::IO;
     octsock5_cl() = (x = new());
 end
 
@@ -42,6 +41,7 @@ function octsock5_new(;isServer::Bool=false, portNum::Int64=-1)
     self::octsock5_cl = octsock5_cl(); 
     self.header = Array{@HEADERTYPE}(@HEADERLEN);
     self.headerSize = sizeof(self.header);
+    # pre-allocate initial memory for inbound strings
     self.stringMemSize = 1000;
     self.stringMem = Array{UInt8}(self.stringMemSize);
     self.stringMemPtr = pointer(self.stringMem);
@@ -49,11 +49,14 @@ function octsock5_new(;isServer::Bool=false, portNum::Int64=-1)
     if (portNum < 0)
         # === Windows named pipes ===
         # default implementation. Use this.
+        if (false == is_windows())
+            error("named pipes are windows-OS specific, others must use TCP/IP ports");
+        end
         conn::Any = string("\\\\.\\pipe\\octsock5_", @sprintf("%i", portNum));
     else
         # === TCP/IP ===
         # TBD support connection to another host
-        # 2x latency, 1/3 throughput of windows named pipes.
+        # on localhost, expect 2x latency, 1/3 throughput relative to windows named pipes.
         conn = portNum;
     end
     
@@ -61,8 +64,7 @@ function octsock5_new(;isServer::Bool=false, portNum::Int64=-1)
         self.server = listen(conn);
     else
         self.server = Void;
-        self.ioIn = connect(conn); # TBD: Could connect to another host here.
-        self.ioOut = self.ioIn;
+        self.io = connect(conn); # TBD: Could connect to another host here.
     end
     # auto-close if object is abandoned or on shutdown
     finalizer(self, octsock5_delete);
@@ -79,29 +81,28 @@ function octsock5_accept(self::octsock5_cl)
     if (self.server == Void)
         error("not in server mode");
     end
-    self.ioIn = accept(self.server);    
-    self.ioOut = self.ioIn;
+    self.io = accept(self.server);    
 end
 
 function octsock5_delete(self::octsock5_cl)
     try 
-        close(self.ioIn);
+        close(self.io);
     catch end
     nothing;
 end
 
 function writeHeader(self::octsock5_cl, flush::Bool)
-    unsafe_write(self.ioOut, Ref(self.header), (@HEADERLEN)*sizeof(@HEADERTYPE));
+    unsafe_write(self.io, Ref(self.header), (@HEADERLEN)*sizeof(@HEADERTYPE));
     nothing; 
 end
 
 function writePointer(self::octsock5_cl, ptr::Ptr{Void}, len::UInt64, flush::Bool)
-    unsafe_write(self.ioOut, ptr, len);
+    unsafe_write(self.io, ptr, len);
     nothing; 
 end
 
 function writeScalar{T}(self::octsock5_cl, arg::T, flush::Bool)
-    unsafe_write(self.ioOut, Ref{T}(arg), sizeof(T));
+    unsafe_write(self.io, Ref{T}(arg), sizeof(T));
     nothing;
 end
 
@@ -188,7 +189,7 @@ function readScalar{T}(self::octsock5_cl, dummy::T)
     r::Ref{T} = Ref{T}(dummy);
     p::Ptr{T} = Base.unsafe_convert(Ptr{T}, r);
     
-    unsafe_read(self.ioIn, p, sizeof(dummy));
+    unsafe_read(self.io, p, sizeof(dummy));
     return r.x::T;
 end
 
@@ -215,7 +216,7 @@ function readArray{T}(self::octsock5_cl, dummy::T)
     
     nBytes::UInt64 = sizeof(T) * nElem;
 
-    unsafe_read(self.ioIn, p1, nBytes);
+    unsafe_read(self.io, p1, nBytes);
     return obj; 
 end
 
@@ -223,7 +224,7 @@ function octsock5_read(self::octsock5_cl)
     headerSize::UInt64 = self.headerSize; # remove this
     
     # === read header ===
-    unsafe_read(self.ioIn, Ref(self.header), headerSize);
+    unsafe_read(self.io, Ref(self.header), headerSize);
     H0::Int64 = self.header[1];
     
     if ((H0 & @H0_TERM) != 0)
@@ -249,7 +250,7 @@ function octsock5_read(self::octsock5_cl)
             self.stringMem = Array{UInt8}(self.stringMemSize);
             self.stringMemPtr = pointer(self.stringMem);
         end
-        unsafe_read(self.ioIn, self.stringMemPtr, nBytesStr);
+        unsafe_read(self.io, self.stringMemPtr, nBytesStr);
         return unsafe_string(self.stringMemPtr, nBytesStr);
     end
 
