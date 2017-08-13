@@ -4,6 +4,9 @@
 Serialization and data exchange over windows named pipes and TCP/IP between processes.
 Intended for high-performance application (latency and throughput) supporting a subset of data structures
 
+## Dependencies ##
+None (tested with Julia 6 on Windows 10 / 64 bit)
+
 ## Supported data types ##
 * Signed/Unsigned Integer 8/16/32/64 bit
 * 32/64 bit float
