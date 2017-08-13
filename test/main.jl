@@ -1,7 +1,8 @@
 # Purpose of this file: 
 # Command-line driven test case for octsock5 high-speed data interface
-# Usually, this will be run as two independent processes for server / client 
-
+# Usually, this will be run as two independent processes for server / client interaction.
+# Command line arguments "client", "server" define, which side is covered by the process (both is possible).
+# Testcases are deterministic (srand), therefore both processes will run in sync
 using octsock5;
 
 function measureRoundtripTime(iOsSrv, iOsClt)
@@ -161,20 +162,23 @@ function main()
             error("invalid command line argument '" * arg * "'");
         end
     end
-
+    
     # negative port number: Use Windows named pipes 
+    # positive port number: Use TCP/IP port 2000
     portNum::Int64 = args["tcpip"] ? 2000 : -12345
-
+    
     # === start link ===
     begin
         if (args["server"])
             iOsSrv = octsock5_new(isServer=true, portNum=portNum);
+            # Client may start only on reception of this token, otherwise there is no guarantee that a server will respond
             print("SERVER_READY\n");
         end
         if (args["client"])
             iOsClt = octsock5_new(isServer=false, portNum=portNum);
         end
         if (args["server"])
+            # note: blocking function
             octsock5_accept(iOsSrv);
         end
     end
@@ -194,4 +198,5 @@ function main()
         testAllTypes(iOsSrv, iOsClt, 10000, args["profiling"]);
     end
 end
+
 main()
