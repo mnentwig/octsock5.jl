@@ -44,8 +44,17 @@ Returns the next argument to "octsock5_write" on the remote end
 ## Performance ##
 E.g. 1800 MBytes / second round-trip on 4.5G i4930 (with large array), 10 us round-trip for a single scalar
 
-## Know bugs ##
+## Known bugs ##
 No check for valid types
+
+## Getting started ##
+* Make Pkg.test("octsock5") work
+* Run julia test/main.jl client server. The below lines demonstrate transmission of a string:
+
+if (iOsSrv != Void) octsock5_write(iOsSrv, "Hello World"); end
+if (iOsClt != Void) res::String = octsock5_read(iOsClt); print(res); assert(res == "Hello World"); end
+    
+Note, client and server can run in the same process. This doesn't make too much sense for a real-world application, but is convenient for testing.
 
 ## Thoughts ##
 * Dynamic memory allocation is expensive. Reading inbound data into pre-allocated (/reused) memory might be considerably faster, e.g. overwrite older data.
