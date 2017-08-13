@@ -9,7 +9,7 @@ function measureRoundtripTime(iOsSrv, iOsClt)
     t::UInt64 = time_ns();
     nRuns::UInt64 = 300000;
     for ix = 1 : nRuns
-        if (iOsSrv != Void) octsock5_write(iOsSrv, ix, true); end
+        if (iOsSrv != Void) octsock5_write(iOsSrv, ix); end
         if (iOsClt != Void) obj = octsock5_read(iOsClt); end
     end
     
@@ -23,7 +23,7 @@ function measureThroughput(iOsSrv, iOsClt)
 
     m = Array{Float64}(rand(20, 20, 20));
     for ix = 1 : nRuns
-        if (iOsSrv != Void) octsock5_write(iOsSrv, m, true); end
+        if (iOsSrv != Void) octsock5_write(iOsSrv, m); end
         if (iOsClt != Void) obj = octsock5_read(iOsClt); end
     end
     
@@ -118,7 +118,7 @@ function testAllTypes(iOsSrv, iOsClt, nRuns::Int, profiling::Bool)
             #arg = Array{Complex{UInt64}}(floor.((2.^50)*rand(10000)) + 1im*floor.((2.^50)*rand(10000)));
         end
         
-        if (iOsSrv != Void) octsock5_write(iOsSrv, arg, true); end
+        if (iOsSrv != Void) octsock5_write(iOsSrv, arg); end
         if (iOsClt != Void) 
             obj = octsock5_read(iOsClt);
             if (profiling == false)
@@ -184,7 +184,7 @@ function main()
     end
     
     # === run code once to remove startup time from benchmarks ===
-    if (iOsSrv != Void) octsock5_write(iOsSrv, "Hello World", true); end
+    if (iOsSrv != Void) octsock5_write(iOsSrv, "Hello World"); end
     if (iOsClt != Void) octsock5_read(iOsClt); end
     
     # === run tests ===

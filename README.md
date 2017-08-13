@@ -1,3 +1,7 @@
-# octsock5
+# Octsock5 - high speed inter-process data interface
 
-[![Build Status](https://travis-ci.org/mnentwig/octsock5.jl.svg?branch=master)](https://travis-ci.org/mnentwig/octsock5.jl)
+## Motivation:
+Fast serialization and data exchange over windows named pipes and TCP/IP between processes.
+Supports a generic subset of data types:
+
+

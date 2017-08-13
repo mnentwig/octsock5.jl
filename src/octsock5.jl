@@ -91,65 +91,65 @@ function octsock5_delete(self::octsock5_cl)
     nothing;
 end
 
-function writeHeader(self::octsock5_cl, flush::Bool)
+function writeHeader(self::octsock5_cl)
     unsafe_write(self.io, Ref(self.header), (@HEADERLEN)*sizeof(@HEADERTYPE));
     nothing; 
 end
 
-function writePointer(self::octsock5_cl, ptr::Ptr{Void}, len::UInt64, flush::Bool)
+function writePointer(self::octsock5_cl, ptr::Ptr{Void}, len::UInt64)
     unsafe_write(self.io, ptr, len);
     nothing; 
 end
 
-function writeScalar{T}(self::octsock5_cl, arg::T, flush::Bool)
+function writeScalar{T}(self::octsock5_cl, arg::T)
     unsafe_write(self.io, Ref{T}(arg), sizeof(T));
     nothing;
 end
 
-function octsock5_write(self::octsock5_cl, arg::Dict, flush::Bool)
+function octsock5_write(self::octsock5_cl, arg::Dict)
     self.header[1] = @H0_DICT;
-    writeHeader(self, false);
+    writeHeader(self);
     
     for item::Pair in arg
         # === write key ===
-        octsock5_write(self, item[1], false);
+        octsock5_write(self, item[1]);
         # === write value ===
-        octsock5_write(self, item[2], false);
+        octsock5_write(self, item[2]);
     end
     
     self.header[1] = @H0_TERM;
-    writeHeader(self, flush);
+    writeHeader(self);
     nothing;
 end
 
-function octsock5_write(self::octsock5_cl, arg::Tuple, flush::Bool)
+function octsock5_write(self::octsock5_cl, arg::Tuple)
     tupLen::UInt64 = length(arg);
     
     self.header[1] = @H0_TUPLE;
     self.header[2] = tupLen;
-    writeHeader(self, false);
+    writeHeader(self);
     
     for ix::UInt64 = 1:tupLen
-        octsock5_write(self, arg[ix], flush && (ix==tupLen));
+        octsock5_write(self, arg[ix]);
     end
     nothing;
 end
 
-function octsock5_write(self::octsock5_cl, arg::String, flush::Bool)
+function octsock5_write(self::octsock5_cl, arg::String)
     len::UInt64 = length(arg);
     self.header[1] = @H0_STRING;
     self.header[2] = len;        
-    writeHeader(self, false);
-    writePointer(self, Ptr{Void}(pointer(arg)), len, flush);
+    writeHeader(self);
+    writePointer(self, Ptr{Void}(pointer(arg)), len);
     nothing;
 end
 
-function octsock5_write(self::octsock5_cl, arg::T, flush::Bool) where T <: Union{RowVector, UnitRange, LinSpace, StepRangeLen}
-    octsock5_write(self, Array(arg), flush);
+function octsock5_write(self::octsock5_cl, arg::T) where T <: Union{RowVector, UnitRange, LinSpace, StepRangeLen}
+    octsock5_write(self, Array(arg));
     nothing;
 end
 
-function octsock5_write{T}(self::octsock5_cl, arg::Array{T}, flush::Bool)
+function octsock5_write{T}(self::octsock5_cl, arg::Array{T})
     H0::Int64 = (T <: Complex) 		? (@H0_ARRAY) | (@H0_COMPLEX) 	: (@H0_ARRAY);
     H0 |= (real(T) <: AbstractFloat) 	? (@H0_FLOAT) 			: 0;
     H0 |= (real(T) <: Integer) 		? (@H0_INTEGER) 		: 0;
@@ -165,12 +165,12 @@ function octsock5_write{T}(self::octsock5_cl, arg::Array{T}, flush::Bool)
         self.header[3+dim] = size(arg, dim);
     end
 
-    writeHeader(self, false);
-    writePointer(self, Ptr{Void}(pointer(arg)), UInt64(sizeof(arg)), flush);
+    writeHeader(self);
+    writePointer(self, Ptr{Void}(pointer(arg)), UInt64(sizeof(arg)));
     nothing;
 end
 
-function octsock5_write{T}(self::octsock5_cl, arg::T, flush::Bool)
+function octsock5_write{T}(self::octsock5_cl, arg::T)
     H0::Int64 = (T <: Complex) 		? (@H0_COMPLEX) : 0;
     H0 |= (real(T) <: AbstractFloat)	? (@H0_FLOAT) 	: 0;
     H0 |= (real(T) <: Integer) 		? (@H0_INTEGER) : 0;
@@ -180,8 +180,8 @@ function octsock5_write{T}(self::octsock5_cl, arg::T, flush::Bool)
     self.header[2] = nBytes;
     self.header[3] = 1;
     
-    writeHeader(self, false);
-    writeScalar(self, arg, flush);
+    writeHeader(self);
+    writeScalar(self, arg);
     nothing;
 end
 
