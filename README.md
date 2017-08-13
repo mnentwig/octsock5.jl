@@ -71,7 +71,7 @@ if (iOsClt != Void) res::String = octsock5_read(iOsClt); assert(res == "Hello Wo
 Note, client and server can run in the same process. This doesn't make too much sense for a real-world application, but is convenient for testing.
 
 ## Thoughts ##
-* Dynamic memory allocation is expensive. Reading inbound data into pre-allocated (/reused) memory might be considerably faster, e.g. overwrite older data.
+* Dynamic memory management is expensive. Reading inbound data into pre-allocated (/reused) memory might be considerably faster, e.g. overwrite older data.
 * Type stability equals speed. Numeric array types and strings have an advantage over Tuples and Dictionaries, since they avoid "Any" type.
 
 ## See also ##
