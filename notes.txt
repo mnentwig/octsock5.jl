@@ -1,0 +1,8 @@
+Create a symlink for the package
+
+cd into octsock5 directory then
+ symlink(pwd(), "c:/users/gk/.julia/v0.6/octsock5")
+
+then
+
+Pkg.test("octsock5");

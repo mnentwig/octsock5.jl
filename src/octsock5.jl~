@@ -3,7 +3,7 @@
 # All rights reserved.
 module octsock5
 
-export octsock5_cl, octsock5_new, octsock5_accept, octsock5_write, octsock5_read, octsock5_delete;
+export octsock5_cl, octsock5_new, octsock5_write, octsock5_read, octsock5_delete;
 
 __precompile__() 
 
@@ -32,7 +32,6 @@ type octsock5_cl
     stringMem::Array{UInt8};
     stringMemSize::UInt64;    
     stringMemPtr::Ptr{UInt8};
-    server::Any;
     ioIn::IO;
     ioOut::IO;
     octsock5_cl() = (x = new());
@@ -58,29 +57,16 @@ function octsock5_new(;isServer::Bool=false, portNum::Int64=-1)
     end
     
     if isServer        
-        self.server = listen(conn);
+        server = listen(conn);
+        self.ioIn = accept(server);
     else
-        self.server = Void;
-        self.ioIn = connect(conn); # TBD: Could connect to another host here.
-        self.ioOut = self.ioIn;
+        self.ioIn = connect(conn); # TBD: Could connect to another host here.        
     end
     # auto-close if object is abandoned or on shutdown
     finalizer(self, octsock5_delete);
         
-    return self;
-end
-
-# octsock5_accept is split from octsock5_new, because the client can only start when the server is up
-# but accept is a blocking function
-# server: octsock5_new, acknowledge
-# client: octsock5_new
-# server: octsock5_accept
-function octsock5_accept(self::octsock5_cl)
-    if (self.server == Void)
-        error("not in server mode");
-    end
-    self.ioIn = accept(self.server);    
     self.ioOut = self.ioIn;
+    return self;
 end
 
 function octsock5_delete(self::octsock5_cl)
