@@ -185,7 +185,7 @@ function main()
     
     # === run code once to remove startup time from benchmarks ===
     if (iOsSrv != Void) octsock5_write(iOsSrv, "Hello World"); end
-    if (iOsClt != Void) res::String = octsock5_read(iOsClt); print(res); assert(res == "Hello World"); end
+    if (iOsClt != Void) res::String = octsock5_read(iOsClt); assert(res == "Hello World"); end
     
     # === run tests ===
     if (args["roundtrip"])

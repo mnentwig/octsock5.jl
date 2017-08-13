@@ -57,13 +57,13 @@ E.g. 1800 MBytes / second round-trip on 4.5G i4930 (with large array), 10 us rou
 No check for valid types
 
 ## Getting started ##
-* Make Pkg.test("octsock5") work
-* Run "julia test/main.jl client server" (giving both "client" and "server" as command line arguments).
+* Make ```julia Pkg.test("octsock5") ```work
+* Run "julia test/main.jl client server" (that is, give both "client" and "server" as command line arguments).
 
-The below lines demonstrate transmission of a string:
+When doing so, the below lines in test/main.jl demonstrate transmission of a single string:
 ```julia
 if (iOsSrv != Void) octsock5_write(iOsSrv, "Hello World"); end
-if (iOsClt != Void) res::String = octsock5_read(iOsClt); print(res); assert(res == "Hello World"); end
+if (iOsClt != Void) res::String = octsock5_read(iOsClt); assert(res == "Hello World"); end
 ```
     
 Note, client and server can run in the same process. This doesn't make too much sense for a real-world application, but is convenient for testing.
