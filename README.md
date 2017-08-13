@@ -73,3 +73,6 @@ Note, client and server can run in the same process. This doesn't make too much 
 ## Thoughts ##
 * Dynamic memory allocation is expensive. Reading inbound data into pre-allocated (/reused) memory might be considerably faster, e.g. overwrite older data.
 * Type stability equals speed. Numeric array types and strings have an advantage over Tuples and Dictionaries, since they avoid "Any" type.
+
+## See also ##
+Julia has built-in serialization, but the protocol is fairly complex and not guaranteed to remain stable between versions.
