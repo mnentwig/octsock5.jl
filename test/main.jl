@@ -137,7 +137,6 @@ function testAllTypes(iOsSrv, iOsClt, nRuns::Int, profiling::Bool)
 end
 
 function main()
-    profiling::Bool = false;
     srand(0);
 
     # === parse arguments ===
