@@ -41,3 +41,12 @@ Sends "arg"
 
 Returns the next argument to "octsock5_write" on the remote end
 
+## Performance ##
+E.g. 1800 MBytes / second round-trip on 4.5G i4930 (with large array), 10 us round-trip for a single scalar
+
+## Know bugs ##
+No check for valid types
+
+## Thoughts ##
+* Dynamic memory allocation is expensive. Reading inbound data into pre-allocated (/reused) memory might be considerably faster, e.g. overwrite older data.
+* Type stability equals speed. Numeric array types and strings have an advantage over Tuples and Dictionaries, since they avoid "Any" type.
