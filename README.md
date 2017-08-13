@@ -7,6 +7,8 @@ Intended for high-performance application (latency and throughput) supporting a 
 ## Supported data types ##
 * Signed/Unsigned Integer 8/16/32/64 bit
 * 32/64 bit float
+* Real, complex
+* +/-Inf, NaN
 * numeric arrays 1, 2, 3-dimensional
 * Tuples (Any type)
 * Dictionaries (Any type / Any type)

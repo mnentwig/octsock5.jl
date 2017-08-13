@@ -31,6 +31,17 @@ function measureThroughput(iOsSrv, iOsClt)
     print("Average throughput ", @sprintf("%1.1f", Float64(nRuns*sizeof(m)/2^20)/t_s), " MBytes (2^20) per second. Reference system: 1800 TBD Pkg.test() seems to give lower performance. Find out, why\n");
 end
 
+function testSpecials(iOsSrv, iOsClt)
+    arg::Tuple = (Inf, -Inf, NaN);
+    if (iOsSrv != Void) octsock5_write(iOsSrv, arg); end
+    if (iOsClt != Void) obj::Tuple = octsock5_read(iOsClt); 
+        if (obj !== arg)
+            error("verify fail in Inf/-Inf/NaN");
+        end
+    end
+    print("OK\n");
+end
+
 function testAllTypes(iOsSrv, iOsClt, nRuns::Int, profiling::Bool)
     # === build data ===
     arg0 = sin.(1.1:10.1);
@@ -110,9 +121,9 @@ function testAllTypes(iOsSrv, iOsClt, nRuns::Int, profiling::Bool)
                 "Hello world. The quick brown fox jumps over the lazy dog. This sentence no verb. Lorem Ipsum!",
                 
                 # Dict
-                d,
+                d, 
             );
-
+            
             #arg = Array{Complex{UInt64}}(1:3)
             #arg = Array{Complex{Float64}}(rand(3)+1im*rand(3))
             #arg = Array{Complex{UInt64}}(floor.((2.^50)*rand(10000)) + 1im*floor.((2.^50)*rand(10000)));
@@ -122,7 +133,7 @@ function testAllTypes(iOsSrv, iOsClt, nRuns::Int, profiling::Bool)
         if (iOsClt != Void) 
             obj = octsock5_read(iOsClt);
             if (profiling == false)
-                if (obj != arg)                     
+                if (obj != arg)
                     print("reference:", arg, "\n");
                     print("received:", obj, "\n");
                     error("verify fail"); 
@@ -153,7 +164,8 @@ function main()
         "throughput" => false,
         "profiling" => false, 
         "alltypes" => false, 
-        "tcpip" => false);
+        "tcpip" => false, 
+        "specials" => false);
     
     for arg::String in ARGS
         if haskey(args, arg)
@@ -196,6 +208,9 @@ function main()
     end
     if (args["alltypes"])
         testAllTypes(iOsSrv, iOsClt, 10000, args["profiling"]);
+    end
+    if (args["specials"])
+        testSpecials(iOsSrv, iOsClt);
     end
 end
 

@@ -59,6 +59,15 @@ function runAllTypes()
     return true
 end
 
+function runSpecials()
+    info("running +/-Inf, NaN test");
+    (a, b) = runTwoProcess(`specials`)
+    info("Server reports: " * a)
+    info("Client reports: " * b);
+    return true
+end
+
 @test runLatency();
 @test runThroughput();
+@test runSpecials();
 @test runAllTypes();
