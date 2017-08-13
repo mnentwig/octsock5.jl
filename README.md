@@ -2,7 +2,7 @@
 
 ## Motivation: ##
 Serialization and data exchange over windows named pipes and TCP/IP between processes.
-Intended for high-performance application (latency and throughput) supporting a subset of data structures
+Intended for high-performance applications (latency, throughput) supporting a subset of data structures
 
 ## Dependencies ##
 None (tested with Julia 6 on Windows 10 / 64 bit)
