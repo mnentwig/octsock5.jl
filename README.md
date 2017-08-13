@@ -24,7 +24,6 @@ are converted into equivalent Arrays
 ```julia
 * function octsock5_new(;isServer::Bool=false, portNum::Int64=-1)
 ```
-
 Creates octsock5_cl object as server/client using windows named pipes (negative portNum) or TCP/IP (positive)
 
 ```julia
