@@ -87,6 +87,9 @@ end
 function octsock5_delete(self::octsock5_cl)
     try 
         close(self.io);
+        if self.server!= Void
+            close(self.server);
+        end            
     catch end
     nothing;
 end
@@ -227,6 +230,7 @@ function octsock5_read(self::octsock5_cl)
     unsafe_read(self.io, Ref(self.header), headerSize);
     H0::Int64 = self.header[1];
     
+    # === handle terminator (dict) ===
     if ((H0 & @H0_TERM) != 0)
         return Void;
     end

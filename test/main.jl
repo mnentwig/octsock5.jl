@@ -5,44 +5,51 @@
 # Testcases are deterministic (srand), therefore both processes will run in sync
 using octsock5;
 
-function measureRoundtripTime(iOsSrv, iOsClt)
+function usererror(msg::String)
+    error("\n\n#####" * msg * "#####\n");
+end
+
+function measureRoundtripTime(iOs)
     t::UInt64 = time_ns();
     nRuns::UInt64 = 300000;
     for ix = 1 : nRuns
-        if (iOsSrv != Void) octsock5_write(iOsSrv, ix); end
-        if (iOsClt != Void) obj = octsock5_read(iOsClt); end
+        octsock5_write(iOs, ix);
+        octsock5_read(iOs);
     end
     
     t = time_ns() - t;
-    print("Average roundtrip time ", @sprintf("%1.3f", Float64(t)/1e6/Float64(nRuns)), " ms. Reference system: 0.009 ms\n");
+    print("Average roundtrip time ", @sprintf("%1.3f", Float64(t)/1e6/Float64(nRuns)), " ms\n");
 end
 
-function measureThroughput(iOsSrv, iOsClt)
-    t::UInt64 = time_ns();
-    nRuns::UInt64 = 20000;
+function measureThroughput(iOs::octsock5_cl)
+    nRuns::UInt64 = 3000;
+    m = Array{Float64}(rand(60, 100, 40));
 
-    m = Array{Float64}(rand(20, 20, 20));
+    # === make first call without timing ===
+    t::UInt64 = time_ns();
+    octsock5_write(iOs, m);
+    obj = octsock5_read(iOs);
+    
     for ix = 1 : nRuns
-        if (iOsSrv != Void) octsock5_write(iOsSrv, m); end
-        if (iOsClt != Void) obj = octsock5_read(iOsClt); end
+        octsock5_write(iOs, m);
+        octsock5_read(iOs);
     end
     
     t_s = Float64(time_ns() - t)/1e9;
-    print("Average throughput ", @sprintf("%1.1f", Float64(nRuns*sizeof(m)/2^20)/t_s), " MBytes (2^20) per second. Reference system: 1800 TBD Pkg.test() seems to give lower performance. Find out, why\n");
+    print("Average throughput ", @sprintf("%1.1f", Float64(nRuns*sizeof(m)/2^20)/t_s), " MBytes (2^20) per second, round-trip (one-way: about 2x)\n");
 end
 
-function testSpecials(iOsSrv, iOsClt)
+function testSpecials(iOs::octsock5_cl)
     arg::Tuple = (Inf, -Inf, NaN);
-    if (iOsSrv != Void) octsock5_write(iOsSrv, arg); end
-    if (iOsClt != Void) obj::Tuple = octsock5_read(iOsClt); 
-        if (obj !== arg)
-            error("verify fail in Inf/-Inf/NaN");
-        end
+    octsock5_write(iOs, arg);
+    obj::Tuple = octsock5_read(iOs); 
+    if (obj !== arg)
+        error("verify fail in Inf/-Inf/NaN");
     end
     print("OK\n");
 end
 
-function testAllTypes(iOsSrv, iOsClt, nRuns::Int, profiling::Bool)
+function testAllTypes(iOs::octsock5_cl, nRuns::Int, profiling::Bool)
     # === build data ===
     arg0 = sin.(1.1:10.1);
     arg0f = Array{Float32}(arg0);
@@ -129,18 +136,16 @@ function testAllTypes(iOsSrv, iOsClt, nRuns::Int, profiling::Bool)
             #arg = Array{Complex{UInt64}}(floor.((2.^50)*rand(10000)) + 1im*floor.((2.^50)*rand(10000)));
         end
         
-        if (iOsSrv != Void) octsock5_write(iOsSrv, arg); end
-        if (iOsClt != Void) 
-            obj = octsock5_read(iOsClt);
-            if (profiling == false)
-                if (obj != arg)
-                    print("reference:", arg, "\n");
-                    print("received:", obj, "\n");
-                    error("verify fail"); 
-                end
+        octsock5_write(iOs, arg);
+        obj = octsock5_read(iOs);
+        if (profiling == false)
+            if (obj != arg)
+                print("reference:", arg, "\n");
+                print("received:", obj, "\n");
+                error("verify fail"); 
             end
         end
-        #if profiling == false && (mod(v, 1000) == 0) print(v, "\n"); end
+        # if profiling == false && (mod(v, 1000) == 0) info(v, "\n"); end
         if profiling == false
             arg = Void;
         end
@@ -153,10 +158,6 @@ end
 function main()
     srand(0);
 
-    # === parse arguments ===
-    iOsSrv = Void;
-    iOsClt = Void;
-    
     args::Dict{String, Bool} = Dict(
         "server" => false, 
         "client" => false, 
@@ -165,13 +166,15 @@ function main()
         "profiling" => false, 
         "alltypes" => false, 
         "tcpip" => false, 
-        "specials" => false);
+        "specials" => false,
+        "helloworld" => false
+    );
     
     for arg::String in ARGS
         if haskey(args, arg)
             args[arg] = true;
         else
-            error("invalid command line argument '" * arg * "'");
+            usererror("invalid command line argument '" * arg * "'");
         end
     end
     
@@ -179,39 +182,61 @@ function main()
     # positive port number: Use TCP/IP port 2000
     portNum::Int64 = args["tcpip"] ? 2000 : -12345
     
-    # === start link ===
-    begin
-        if (args["server"])
-            iOsSrv = octsock5_new(isServer=true, portNum=portNum);
-            # Client may start only on reception of this token, otherwise there is no guarantee that a server will respond
-            print("SERVER_READY\n");
-        end
-        if (args["client"])
-            iOsClt = octsock5_new(isServer=false, portNum=portNum);
-        end
-        if (args["server"])
-            # note: blocking function
-            octsock5_accept(iOsSrv);
-        end
-    end
-    
-    # === run code once to remove startup time from benchmarks ===
-    if (iOsSrv != Void) octsock5_write(iOsSrv, "Hello World"); end
-    if (iOsClt != Void) res::String = octsock5_read(iOsClt); assert(res == "Hello World"); end
-    
-    # === run tests ===
-    if (args["roundtrip"])
-        measureRoundtripTime(iOsSrv, iOsClt);
-    end
-    if (args["throughput"])
-        measureThroughput(iOsSrv, iOsClt);
-    end
-    if (args["alltypes"])
-        testAllTypes(iOsSrv, iOsClt, 10000, args["profiling"]);
-    end
-    if (args["specials"])
-        testSpecials(iOsSrv, iOsClt);
-    end
-end
+    if (args["server"] && args["client"]) 
+        usererror("must use server or client argument"); # avoid lockup
+    elseif (args["server"])
+        # === open link ===
+        iOs::octsock5_cl = octsock5_new(isServer=true, portNum=portNum);
+        # Agreed arbitrary token via STDOUT to guarantee that the server is up when the client is started
+        # From the command line, start the client process only when this line has appeared
+        # An automated startup would e.g. use redirected STDOUT or simply retry with timeout
+        print("SERVER_READY\n");
+        
+        # Execution blocks here until connected
+        octsock5_accept(iOs);
+        print("got connection\n");
 
+        # === run loopback server ===
+        while (true)
+            tmp = octsock5_read(iOs);
+            octsock5_write(iOs, tmp);
+            # agreed arbitrary token to stop the loopback server
+            if tmp == "end loopback and have a nice day" break; end
+        end
+        octsock5_delete(iOs);
+        print("Server received agreed final token and closed cleanly\n");
+        return;
+    elseif (args["client"])
+        # === open link ===
+        iOs = octsock5_new(isServer=false, portNum=portNum);
+
+        # === run tests ===
+        if (args["helloworld"])
+            octsock5_write(iOs, "Hello World");
+            res::String = octsock5_read(iOs); assert(res == "Hello World");
+        end
+        
+        if (args["roundtrip"])
+            measureRoundtripTime(iOs);
+        end
+
+        if (args["throughput"])
+            measureThroughput(iOs);
+        end
+
+        if (args["alltypes"])
+            testAllTypes(iOs, 10000, args["profiling"]);
+        end
+
+        if (args["specials"])
+            testSpecials(iOs);
+        end
+        
+        # agreed arbitrary token to stop loopback server
+        octsock5_write(iOs, "end loopback and have a nice day"); 
+        tmpStr::String = octsock5_read(iOs);
+        assert(tmpStr == "end loopback and have a nice day");        
+        octsock5_delete(iOs);
+    end # elseif client
+end
 main()

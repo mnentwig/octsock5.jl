@@ -56,7 +56,7 @@ Sends "arg"
 Returns the next argument to "octsock5_write" on the remote end
 
 ## Performance ##
-E.g. 1800 MBytes / second round-trip on 4.5G i4930 (with large array), 10 us round-trip for a single scalar
+E.g. 750 MBytes / second round-trip on 4.5G i4930 (with large array), 37 us round-trip for a single scalar
 
 ## Known bugs ##
 No check for valid types
