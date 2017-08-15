@@ -5,11 +5,10 @@ Serialization and data exchange over windows named pipes and TCP/IP between proc
 * Main audience: high-performance math-centric applications
 * Typical use case: Need performance but don't want C-level linkage to Julia
   * e.g. may not risk SEGFAULTs in complex system
-  * e.g. want clean "reset" of math system via restarting the Julia slave processes
+  * e.g. want clean "reset" of math system (including dynamic memory) via restarting the Julia slave processes
   * e.g. want multiple, fully independent math processes
 * Optimized for latency
 * Optimized for throughput
-* Designed largely for math-centric applications
 * Supports any combination of number formats:
   * 8/16/32/64 bit integer
   * signed / unsigned integer
