@@ -110,7 +110,7 @@ function writeScalar{T}(self::octsock5_cl, arg::T)
 end
 
 function octsock5_write(self::octsock5_cl, arg::Dict)
-    self.header[1] = @H0_DICT;
+    @inbounds self.header[1] = @H0_DICT;
     writeHeader(self);
     
     for item::Pair in arg
@@ -120,7 +120,7 @@ function octsock5_write(self::octsock5_cl, arg::Dict)
         octsock5_write(self, item[2]);
     end
     
-    self.header[1] = @H0_TERM;
+    @inbounds self.header[1] = @H0_TERM;
     writeHeader(self);
     nothing;
 end
@@ -128,8 +128,8 @@ end
 function octsock5_write(self::octsock5_cl, arg::Tuple)
     tupLen::UInt64 = length(arg);
     
-    self.header[1] = @H0_TUPLE;
-    self.header[2] = tupLen;
+    @inbounds self.header[1] = @H0_TUPLE;
+    @inbounds self.header[2] = tupLen;
     writeHeader(self);
     
     for ix::UInt64 = 1:tupLen
@@ -140,8 +140,8 @@ end
 
 function octsock5_write(self::octsock5_cl, arg::String)
     len::UInt64 = length(arg);
-    self.header[1] = @H0_STRING;
-    self.header[2] = len;        
+    @inbounds self.header[1] = @H0_STRING;
+    @inbounds self.header[2] = len;        
     writeHeader(self);
     writePointer(self, Ptr{Void}(pointer(arg)), len);
     nothing;
@@ -159,13 +159,14 @@ function octsock5_write{T}(self::octsock5_cl, arg::Array{T})
     H0 |= (real(T) <: Signed) 		? (@H0_SIGNED) 			: 0;
 
     nd::Int64 = ndims(arg); 
+    if (nd > 3) error("unsupported number of matrix dimensions"); end
     nBytes::UInt64 = sizeof(T); 
-    self.header[1] = H0;
-    self.header[2] = nBytes;
-    self.header[3] = nd;
+    @inbounds self.header[1] = H0;
+    @inbounds self.header[2] = nBytes;
+    @inbounds self.header[3] = nd;
     
     for dim = 1 : nd
-        self.header[3+dim] = size(arg, dim);
+        @inbounds self.header[3+dim] = size(arg, dim);
     end
 
     writeHeader(self);
@@ -179,9 +180,9 @@ function octsock5_write{T}(self::octsock5_cl, arg::T)
     H0 |= (real(T) <: Integer) 		? (@H0_INTEGER) : 0;
     H0 |= (real(T) <: Signed) 		? (@H0_SIGNED) 	: 0;
     nBytes::UInt64 = sizeof(T); 
-    self.header[1] = H0;
-    self.header[2] = nBytes;
-    self.header[3] = 1;
+    @inbounds self.header[1] = H0;
+    @inbounds self.header[2] = nBytes;
+    @inbounds self.header[3] = 1;
     
     writeHeader(self);
     writeScalar(self, arg);
@@ -197,10 +198,10 @@ function readScalar{T}(self::octsock5_cl, dummy::T)
 end
 
 function readArray{T}(self::octsock5_cl, dummy::T)
-    H3::Int64 = self.header[3];
-    H4::Int64 = self.header[4];
-    H5::Int64 = self.header[5];
-    H6::Int64 = self.header[6];
+    @inbounds H3::Int64 = self.header[3];
+    @inbounds H4::Int64 = self.header[4];
+    @inbounds H5::Int64 = self.header[5];
+    @inbounds H6::Int64 = self.header[6];
     if (H3 == 1)
         obj::Array{T} = Array{T, 1}(H4);
         nElem::UInt64 = H4;
@@ -228,7 +229,7 @@ function octsock5_read(self::octsock5_cl)
     
     # === read header ===
     unsafe_read(self.io, Ref(self.header), headerSize);
-    H0::Int64 = self.header[1];
+    @inbounds H0::Int64 = self.header[1];
     
     # === handle terminator (dict) ===
     if ((H0 & @H0_TERM) != 0)
@@ -237,17 +238,17 @@ function octsock5_read(self::octsock5_cl)
     
     # === handle tuples ===
     if ((H0 & @H0_TUPLE) != 0)
-        local nElemTuple::UInt64 = self.header[2];
+        @inbounds local nElemTuple::UInt64 = self.header[2];
         local objTuple::Array{Any} = Array{Any}(nElemTuple);
         for ix::UInt64 = 1:nElemTuple
-            objTuple[ix] = octsock5_read(self);
+            @inbounds objTuple[ix] = octsock5_read(self);
         end
         return Tuple(objTuple);
     end
 
     # === handle string ===
     if ((H0 & @H0_STRING) != 0)        
-        nBytesStr::Int64 = self.header[2];
+        @inbounds nBytesStr::Int64 = self.header[2];
         # allocate memory
         if self.stringMemSize < nBytesStr
             self.stringMemSize = nBytesStr;
@@ -270,10 +271,10 @@ function octsock5_read(self::octsock5_cl)
         end
     end
 
-    nElemBytes::Int64 = self.header[2];
+    @inbounds nElemBytes::Int64 = self.header[2];
     isComplex::Bool = ((H0 & @H0_COMPLEX) != 0);
     isSigned::Bool = ((H0 & @H0_SIGNED) != 0);
-    tId::UInt64 = TYPEID(H0, self.header[2]);
+    @inbounds tId::UInt64 = TYPEID(H0, self.header[2]);
     if ((H0 & @H0_ARRAY) == 0)
         # === handle array ===
         if ((H0 & @H0_COMPLEX) != 0)        
