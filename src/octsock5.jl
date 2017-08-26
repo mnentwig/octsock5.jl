@@ -20,6 +20,7 @@ macro H0_DICT() 	return Int64(0x00000080); end
 macro H0_TERM() 	return Int64(0x00000100); end
 macro HEADERTYPE() 	return Int64; end
 macro HEADERLEN()	return 6; end
+macro HEADERSIZE()	return 48; end
 
 # unique number that identifies each scalar / array / complex / number type combination
 function TYPEID(H0::Int64, nBytes::Int64) 
@@ -28,7 +29,6 @@ end
 
 type octsock5_cl
     header::Array{@HEADERTYPE};
-    headerSize::UInt64;
     stringMem::Array{UInt8};
     stringMemSize::UInt64;    
     stringMemPtr::Ptr{UInt8};
@@ -40,7 +40,6 @@ end
 function octsock5_new(;isServer::Bool=false, portNum::Int64=-1)
     self::octsock5_cl = octsock5_cl(); 
     self.header = Array{@HEADERTYPE}(@HEADERLEN);
-    self.headerSize = sizeof(self.header);
     # pre-allocate initial memory for inbound strings
     self.stringMemSize = 1000;
     self.stringMem = Array{UInt8}(self.stringMemSize);
@@ -95,7 +94,7 @@ function octsock5_delete(self::octsock5_cl)
 end
 
 function writeHeader(self::octsock5_cl)
-    unsafe_write(self.io, Ref(self.header), (@HEADERLEN)*sizeof(@HEADERTYPE));
+    unsafe_write(self.io, Ref(self.header), @HEADERSIZE);
     nothing; 
 end
 
@@ -225,10 +224,14 @@ function readArray{T}(self::octsock5_cl, dummy::T)
 end
 
 function octsock5_read(self::octsock5_cl)
-    headerSize::UInt64 = self.headerSize; # remove this
     
     # === read header ===
-    unsafe_read(self.io, Ref(self.header), headerSize);
+    unsafe_read(self.io, Ref(self.header), @HEADERSIZE);
+    #print("header 1: 0x", hex(self.header[1], 8), "\n");
+    #print("header 2: 0x", hex(self.header[2], 8), "\n");
+    #print("header 3: 0x", hex(self.header[3], 8), "\n");
+    #print("header 4: 0x", hex(self.header[4], 8), "\n");
+    #print("header 5: 0x", hex(self.header[5], 8), "\n");
     @inbounds H0::Int64 = self.header[1];
     
     # === handle terminator (dict) ===

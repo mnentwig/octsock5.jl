@@ -71,6 +71,7 @@ function runAllTypes(cSharp::Bool)
     return true
 end
 
+# tests NaN, Inf
 function runSpecials(cSharp::Bool)
     info("running +/-Inf, NaN test");
     (a, b) = runTwoProcess(`specials`, cSharp)
@@ -79,7 +80,28 @@ function runSpecials(cSharp::Bool)
     return true
 end
 
+# opens and closes repeatedly. Tests, whether handles are cleanly released.
+function reopen()
+    for i = 1 : 100
+        portNum::Int64 = -123456;
+        iServer::octsock5_cl = octsock5_new(isServer=true, portNum=portNum);
+        iClient::octsock5_cl = octsock5_new(isServer=false, portNum=portNum);        
+        octsock5_accept(iServer);
+        s1::String = "Hello world this is a test.";
+        s2::String = "Lorem Ipsum. Bonk.";
+        octsock5_write(iServer, s1);
+        octsock5_write(iClient, s2);
+        assert(octsock5_read(iClient) == s1);
+        assert(octsock5_read(iServer) == s2);
+        octsock5_delete(iServer);
+        octsock5_delete(iClient);
+    end
+    return true;
+end
+
+
 info("*** running Julia-Julia tests ***");
+@test reopen();
 @test runLatency(false);
 @test runThroughput(false);
 @test runSpecials(false);
