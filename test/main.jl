@@ -50,7 +50,7 @@ function testSpecials(iOs::octsock5_cl)
 end
 
 function testLarge(iOs::octsock5_cl)
-    a1::Array{Float64} = rand(10+00000, 10);
+    a1::Array{Float64} = rand(1000000, 10);
     octsock5_write(iOs, a1);
     a2::Array{Float64} = octsock5_read(iOs); 
     if (a1 != a2)
