@@ -49,6 +49,16 @@ function testSpecials(iOs::octsock5_cl)
     print("OK\n");
 end
 
+function testLarge(iOs::octsock5_cl)
+    a1::Array{Float64} = rand(10+00000, 10);
+    octsock5_write(iOs, a1);
+    a2::Array{Float64} = octsock5_read(iOs); 
+    if (a1 != a2)
+        error("verify fail in large test");
+    end
+    print("OK\n");
+end
+
 function testAllTypes(iOs::octsock5_cl, nRuns::Int, profiling::Bool)
     # === build data ===
     arg0 = sin.(1.1:10.1);
@@ -167,7 +177,8 @@ function main()
         "alltypes" => false, 
         "tcpip" => false, 
         "specials" => false,
-        "helloworld" => false
+        "helloworld" => false,
+        "large" => false
     );
     
     for arg::String in ARGS
@@ -177,7 +188,7 @@ function main()
             usererror("invalid command line argument '" * arg * "'");
         end
     end
-    
+
     # negative port number: Use Windows named pipes 
     # positive port number: Use TCP/IP port 2000
     portNum::Int64 = args["tcpip"] ? 2000 : -12345
@@ -185,6 +196,11 @@ function main()
     if (args["server"] && args["client"]) 
         usererror("must use server or client argument"); # avoid lockup
     elseif (args["server"])
+        for arg in ARGS
+            if (!(arg == "server" || arg == "tcpip"))
+                error("argument unsupported in server mode: " * arg);
+            end
+        end
         # === open link ===
         iOs::octsock5_cl = octsock5_new(isServer=true, portNum=portNum);
         # Agreed arbitrary token via STDOUT to guarantee that the server is up when the client is started
@@ -204,9 +220,10 @@ function main()
             if tmp == "end loopback and have a nice day" break; end
         end
         octsock5_delete(iOs);
-        print("Server received agreed final token and closed cleanly\n");
+        print("SERVER_EXIT\n");
         return;
     elseif (args["client"])
+        
         # === open link ===
         iOs = octsock5_new(isServer=false, portNum=portNum);
 
@@ -230,6 +247,10 @@ function main()
 
         if (args["specials"])
             testSpecials(iOs);
+        end
+
+        if (args["large"])
+            testLarge(iOs);
         end
         
         # agreed arbitrary token to stop loopback server

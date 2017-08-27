@@ -2,25 +2,39 @@
 # [note2]: https://discourse.julialang.org/t/interpolating-an-empty-string-inside-backticks/2428/3
 using octsock5
 using Base.Test
-function runTwoProcess(args::Cmd, cSharp::Bool) # [note2]
+function runTwoProcess(args::Cmd, cSharp::Bool, tcpIp::Bool) # [note2]
     # start server process [note1]
+
     if cSharp
+        assert(false == tcpIp);
         # run C# server implementation
         a1::Tuple = open(`csharp.exe`);
     else
         # run Julia server implementation
-        a1 = open(`julia.exe main.jl server`);
+        if tcpIp
+            a1 = open(`julia.exe main.jl server tcpip`);
+        else
+            a1 = open(`julia.exe main.jl server`);
+        end
     end
-    
     # wait until server has bound the port
     resp1::String = readline(a1[1]);
     assert(contains(resp1, "SERVER_READY"));
     
     # start client process
-    sleep(0.5);
-    a2::Tuple = open(`julia.exe main.jl client $args`);
+    #sleep(0.5);
+    if tcpIp
+        a2::Tuple = open(`julia.exe main.jl client $args tcpip`);
+    else
+        a2 = open(`julia.exe main.jl client $args`);
+    end
     # read all output
-    resp1 = readstring(a1[2]);
+    while true
+        resp1 = readline(a1[1]);
+        if contains(resp1, "SERVER_EXIT")
+            break;
+        end
+    end
     resp2::String = readstring(a2[2]);
     
     # clean shutdown
@@ -29,61 +43,56 @@ function runTwoProcess(args::Cmd, cSharp::Bool) # [note2]
     return (resp1, resp2)
 end
 
-function runLatency(cSharp::Bool)
-    info("running latency test (windows named pipes)");
-    (a,b) = runTwoProcess(`roundtrip`, cSharp);
+function runLatency(cSharp::Bool, tcpIp::Bool)
+    info("running latency test");
+    (a,b) = runTwoProcess(`roundtrip`, cSharp, tcpIp);
     info("Server reports: " * a)
     info("Client reports: " * b);
-        
-    # TCP/IP must be run manually, fails to connect for unknown reasons
-
-    if (false == cSharp)
-        info("TCP/IP tests need to be run manually for the time being");
-        #info("running latency test (TCP/IP on localhost)");
-        #(a,b) = runTwoProcess(`roundtrip tcpip`, cSharp);
-        #info("Server reports: " * a)
-        #info("Client reports: " * b);
-    end
     return true
 end
 
-function runThroughput(cSharp::Bool)
-    info("running throughput test (windows named pipes)");
-    (a, b) = runTwoProcess(`throughput`, cSharp)
+function runThroughput(cSharp::Bool, tcpIp::Bool)
+    info("running throughput test");
+    (a, b) = runTwoProcess(`throughput`, cSharp, tcpIp)
     info("Server reports: " * a)
     info("Client reports: " * b);
-    
-    if (false == cSharp)
-        info("TCP/IP tests need to be run manually for the time being");
-        #info("running throughput test (tcpip on localhost)");
-        #(a, b) = runTwoProcess(`throughput tcpip`, cSharp)
-        #info("Server reports: " * a)
-        #info("Client reports: " * b);
-    end
     return true
 end
 
-function runAllTypes(cSharp::Bool)
+function runAllTypes(cSharp::Bool, tcpIp::Bool)
     info("running all types test");
-    (a, b) = runTwoProcess(`alltypes`, cSharp)
+    (a, b) = runTwoProcess(`alltypes`, cSharp, tcpIp)
     info("Server reports: " * a)
     info("Client reports: " * b);
     return true
 end
 
 # tests NaN, Inf
-function runSpecials(cSharp::Bool)
+function runSpecials(cSharp::Bool, tcpIp::Bool)
     info("running +/-Inf, NaN test");
-    (a, b) = runTwoProcess(`specials`, cSharp)
+    (a, b) = runTwoProcess(`specials`, cSharp, tcpIp)
+    info("Server reports: " * a)
+    info("Client reports: " * b);
+    return true
+end
+
+# tests a large data package (blocking problems?
+function runLarge(cSharp::Bool, tcpIp::Bool)
+    info("running large data package test");
+    (a, b) = runTwoProcess(`large`, cSharp, tcpIp)
     info("Server reports: " * a)
     info("Client reports: " * b);
     return true
 end
 
 # opens and closes repeatedly. Tests, whether handles are cleanly released.
-function reopen()
-    for i = 1 : 100
-        portNum::Int64 = -123456;
+function reopen(tcpIp::Bool)    
+    if tcpIp
+        portNum::Int64 = 20000;
+    else
+        portNum = -12345;
+    end
+    for i = 1 : 100            
         iServer::octsock5_cl = octsock5_new(isServer=true, portNum=portNum);
         iClient::octsock5_cl = octsock5_new(isServer=false, portNum=portNum);        
         octsock5_accept(iServer);
@@ -99,16 +108,23 @@ function reopen()
     return true;
 end
 
+# pass == 1 : Julia loopback server, windows named pipes
+# pass == 2 : Julia loopback server, TCP/IP (slow)
+# pass == 3 : C# loopback server, windows named pipes
+for pass = 1 : 3
+    tcpIp::Bool = (pass == 2);
+    cSharp::Bool = (pass == 3);
 
-info("*** running Julia-Julia tests ***");
-@test reopen();
-@test runLatency(false);
-@test runThroughput(false);
-@test runSpecials(false);
-@test runAllTypes(false);
+    if pass < 3
+        @test reopen(tcpIp);
+    end
 
-info("*** running Julia-C# tests via csharp.exe loopback server ***");
-@test runLatency(true);
-@test runThroughput(true);
-@test runSpecials(true);
-@test runAllTypes(true);
+    @test runLarge(cSharp, tcpIp);
+    @test runLatency(cSharp, tcpIp);
+    @test runThroughput(cSharp, tcpIp);
+    @test runSpecials(cSharp, tcpIp);
+    @test runAllTypes(cSharp, tcpIp);
+    if pass < 3
+        @test reopen(tcpIp);
+    end
+end
